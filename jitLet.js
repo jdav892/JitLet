@@ -110,6 +110,7 @@ const jitlet = module.exports = {
     },
 
     checkout : function(ref, _) {
+//changes index, working copy and HEAD to reflect content of ref
         files.assertInRepo();
         config.assertNotBare();
 
@@ -139,7 +140,7 @@ const jitlet = module.exports = {
             
          }
     },
-    
+
 
 
 }

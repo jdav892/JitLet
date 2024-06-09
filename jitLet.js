@@ -95,7 +95,7 @@ const jitlet = module.exports = {
     branch: function(name, opts) {
         files.assertInRepo();
         opts = opts || {};
-// If no branch name was passed, list the local branches
+//creates a new branch that HEAD points at
         if(name === undefined) {
             return Object.keys(refs.localHeads()).map(function(branch){
                 return (branch === refs.headBranchName() ? "* " : " ") + this.branch;
@@ -108,6 +108,38 @@ const jitlet = module.exports = {
             jitlet.update_ref(refs.toLocalRef(name), refs.hash("HEAD"));
         }
     },
+
+    checkout : function(ref, _) {
+        files.assertInRepo();
+        config.assertNotBare();
+
+        const toHash = refs.hash(ref);
+        
+        if(!objects.exist(toHash)) {
+            throw new Error(ref + " did not match any file(s) known to JitLet");
+        }else if(objects.type(objects.read(toHash)) !== "commit") {
+            throw new Error("reference is not a tree: " + ref);
+        }else if(refs === refs.headBranchName() ||
+                 refs === files.read(files.jitletPath("HEAD"))) {
+        return "ALready on " + ref;
+         }else {
+            const paths = diff.changedFilesCommmitWouldOverwrite(toHash);
+            if(paths.length > 0){
+                throw new Error("local chnages would be lost\n" + paths.join("\n") + "\n"); 
+            }else{
+                process.chdir(files.workingCopyPath());
+                const isDetachingHead = object.exists(ref);
+                workingCopy.write(diff.diff(refs.hash("HEAD"), toHash));
+                refs.write("HEAD", isDetachingHead ? toHash : "ref:" + refs.toLocalRef(ref));
+                index.write(index.tocToindex(objects.commitToc(toHash)));
+                return isDetachingHead ?
+                 "Note: checking out " + toHash + "\nYou are in detached HEAD state." :
+                 "Switched to branch" + ref;
+            }
+            
+         }
+    },
+    
 
 
 }

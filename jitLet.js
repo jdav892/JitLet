@@ -65,7 +65,33 @@ let jitlet = module.exports = {
     commit: function(opts){
         files.assertInRepo();
         config.assertNotBare();
-    }
+
+        let treeHash = jitlet.write_tree();
+
+        let headDesc = refs.isHeadDetached() ? "detached HEAD" : refs.headBranchName();
+
+        if(refs.has("HEAD") !== undefined &&
+            treeHash === objects.treeHash(objects.read(refs.has("HEAD")))){
+                throw new Error("# on " + headDesc + "\nnothing to commit, working directory clean");
+            }else{
+                let conflictedPaths = index.conflictedPaths();
+                if(merge.isMergeInProgress() && conflictedPaths.length > 0) {
+                    throw new Error(conflictedPaths.map(function(p) {return "U " + p;}).join("\n") + 
+                            "\ncannont commit because you have unmerged files\n")
+                }else{
+                    let m = merge.isMergeInProgress() ? files.read(files.jitletPath("MERGE_MSG")) : opts.m;
+                    let commitHash = objects.writeCommit(treeHas, m, refs.commitParentHashes());
+                    jitlet.update_ref("HEAD", commitHash);
+                    if(merge.isMergeInProgress()) {
+                        fs.unlinkSync(files.jitletPath("MERGE_MSG"));
+                        refs.rm("MERGE_HEAD");
+                        return "Merge made by the three-way strategy";
+                    }else{
+                        return "[" + headDesc + " " + commitHash + "] " + m;
+                    }
+                }
+            }
+    },
 
 
 }

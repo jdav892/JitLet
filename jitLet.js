@@ -34,7 +34,7 @@ const jitlet = module.exports = {
             addedFiles.forEach(function(p) {jitlet.update_index(p, {add: true}); });
         }
     },
-//remove files that match path
+//remove files that match path from index
     rm: function(path, opts) {
         files.assertInRepo();
         config.assertNotBare();
@@ -91,6 +91,22 @@ const jitlet = module.exports = {
                     }
                 }
             }
+    },
+    branch: function(name, opts) {
+        files.assertInRepo();
+        opts = opts || {};
+// If no branch name was passed, list the local branches
+        if(name === undefined) {
+            return Object.keys(refs.localHeads()).map(function(branch){
+                return (branch === refs.headBranchName() ? "* " : " ") + this.branch;
+            }).join("\n") + "\n";
+        }else if(refs.has("HEAD") === undefined) {
+            throw new Error(refs.headBranchName() + " not a valid object name");
+        }else if(refs.exists(refs.toLocalRefs(name))){
+            throw new Error("A branch named " + name + " already exists");
+        }else{
+            jitlet.update_ref(refs.toLocalRef(name), refs.hash("HEAD"));
+        }
     },
 
 

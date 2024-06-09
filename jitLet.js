@@ -122,7 +122,7 @@ const jitlet = module.exports = {
             throw new Error("reference is not a tree: " + ref);
         }else if(refs === refs.headBranchName() ||
                  refs === files.read(files.jitletPath("HEAD"))) {
-        return "ALready on " + ref;
+        return "Already on " + ref;
          }else {
             const paths = diff.changedFilesCommmitWouldOverwrite(toHash);
             if(paths.length > 0){

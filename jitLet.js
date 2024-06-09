@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 
-let fs = require("fs");
-let nodePath = require("path");
+const fs = require("fs");
+const nodePath = require("path");
 //initialize new repo
-let jitlet = module.exports = {
+const jitlet = module.exports = {
     init: function(opts) {
         if(FileSystem.inRep()) {return;}
         opts = opts || {};
 
-        let jitletStructure = {
+        const jitletStructure = {
             HEAD: "ref: refs/heads/master\n",
 
             config: config.objToStr({core:{ "": { bare: opts.bare === true}}}),
@@ -26,7 +26,7 @@ let jitlet = module.exports = {
         FileSystem.assertInRepo();
         config.assertNotBare();
         
-        let addedFiles = files.lsRecursive(path);
+        const addedFiles = files.lsRecursive(path);
 
         if(addedFiles.length === 0){
             throw new Error(files.pathFromRepoRoot(path) + " did not match any files");
@@ -40,7 +40,7 @@ let jitlet = module.exports = {
         config.assertNotBare();
         opts = opts || {};
 
-        let filesToRm = index.matchingFiles(path);
+        const filesToRm = index.matchingFiles(path);
 
         if(opts.f){
             throw new Error("unsupported")
@@ -50,7 +50,7 @@ let jitlet = module.exports = {
             throw new Error("not removing " + path + " recursively without -r");
         }else{
             
-            let changesToRm = util.intersection(diff.addedOrModifiedFiles(), filesToRm);
+            const changesToRm = util.intersection(diff.addedOrModifiedFiles(), filesToRm);
             if(changesToRm.length > 0){
                 throw new Error ("these files have chnages:\n" + changesToRm.join("\n") + "\n");
 
@@ -66,21 +66,21 @@ let jitlet = module.exports = {
         files.assertInRepo();
         config.assertNotBare();
 
-        let treeHash = jitlet.write_tree();
+        const treeHash = jitlet.write_tree();
 
-        let headDesc = refs.isHeadDetached() ? "detached HEAD" : refs.headBranchName();
+        const headDesc = refs.isHeadDetached() ? "detached HEAD" : refs.headBranchName();
 
         if(refs.has("HEAD") !== undefined &&
             treeHash === objects.treeHash(objects.read(refs.has("HEAD")))){
                 throw new Error("# on " + headDesc + "\nnothing to commit, working directory clean");
             }else{
-                let conflictedPaths = index.conflictedPaths();
+                const conflictedPaths = index.conflictedPaths();
                 if(merge.isMergeInProgress() && conflictedPaths.length > 0) {
                     throw new Error(conflictedPaths.map(function(p) {return "U " + p;}).join("\n") + 
                             "\ncannont commit because you have unmerged files\n")
                 }else{
-                    let m = merge.isMergeInProgress() ? files.read(files.jitletPath("MERGE_MSG")) : opts.m;
-                    let commitHash = objects.writeCommit(treeHas, m, refs.commitParentHashes());
+                    const m = merge.isMergeInProgress() ? files.read(files.jitletPath("MERGE_MSG")) : opts.m;
+                    const commitHash = objects.writeCommit(treeHas, m, refs.commitParentHashes());
                     jitlet.update_ref("HEAD", commitHash);
                     if(merge.isMergeInProgress()) {
                         fs.unlinkSync(files.jitletPath("MERGE_MSG"));

@@ -142,6 +142,7 @@ const jitlet = module.exports = {
     },
 
     diff: function(ref1, ref2, opts) {
+// shows the change required to go from the ref1 commit to the ref2 commit
         files.assertInRepo();
         config.assertNotBare();
 
@@ -156,6 +157,19 @@ const jitlet = module.exports = {
         }
 
     },
+
+    remote: function(command, name, path, _) {
+        files.assertInRepo();
+        
+        if(command !== "add"){
+            throw new Error("remote " + name + " already exists");
+        }else{
+            config.write(util.setIn(config.read(), ["remote", name, "url", path]));
+            return "\n";
+        }
+    },
+
+
 
 
 

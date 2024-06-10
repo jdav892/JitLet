@@ -242,6 +242,50 @@ const jitlet = module.exports = {
         return jitlet.merge("FETCH_HEAD");
     },
 
+    push: function (remote, branch, opts) {
+//gets the commit that branch is on in the local repo and points branch on remote at the same commit
+        files.assertInRepo();
+        opts = opts || {};
+
+        if(remote === undefined || branch === undefined) {
+            throw new Error("unsupported")
+        }else if(!(remote in config.read().remote)){
+            throw new Error(remote + " does not appear to be a jitlet repository");
+        }else{
+            const remotePatch = config.read().remote[remote].url;
+            const remoteCall = util.onRemote(remotePath);
+            
+            if(remoteCall(refs.isCheckedOut, branch)) {
+                throw new Error("refusing to update checked out branch " + branch);
+            }else{
+                const receiverHash = remoteCall(refs.hash, branch);
+                const giverHash = refs.hash(branch);
+
+                if(objects.isUpToDate(receiverHash, giverHash)) {
+                    return "Already up-to-date";
+                }else if(!opts.f && !merge.canFastForward(receiverHash, giverHash)){
+                    throw new Error("failed to push some refs to " + remotePath);
+                }else{
+                    objects.allObjects().forEach(function(o){remoteCall(objects.write, o); });
+                    remoteCall(jitlet.update_ref, refs.toLocalRef(branch), giverHash);
+                    jitlet.update_ref(refs.toRemoteRef(remote, branch), giverHash);
+                    return ["To " + remotePath,
+                            "Count " + objects.allObjects().length,
+                            branch + " -> " + branch].join("\n") + "\n";
+                }
+            }
+        }
+    },
+
+    status: function(_){
+//reports the state of the repo: the current branch, untracked files, conflicted files,
+//files that are staged to be commited and files that are not staged to be committed
+        files.assertInRepo();
+        config.assertNotBare();
+        return this.status.toString();
+    },
+
+
 
 
 

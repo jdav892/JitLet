@@ -211,7 +211,7 @@ const jitlet = module.exports = {
         const giverHash = refs.hash(ref);
         
         if(refs.isHeadDetatched()){
-            throw new Error("unsopported");
+            throw new Error("unsupported");
         }else if(giverHash === undefined || objects.type(objects.read(giverHash)) !== "commit"){
             throw new Error(ref + ": expected commit type");
         }else if(objects.isUpToDate(receiverHash, giverHash)) {
@@ -219,7 +219,7 @@ const jitlet = module.exports = {
         }else{
             const paths = diff.changedFilesCommitWouldOverwrite(giverHash);
             if(paths.length > 0) {
-                throw new Error("local chnages would be lost\n" + paths.join("\n") + "\n");
+                throw new Error("local changes would be lost\n" + paths.join("\n") + "\n");
             }else if(merge.canFastForward(receiverHash, giverHash)){
                 merge.writeFastForwardMerge(receiverHash, giverHash);
                 return "Fast-forward"

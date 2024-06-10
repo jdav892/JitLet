@@ -52,7 +52,7 @@ const jitlet = module.exports = {
             
             const changesToRm = util.intersection(diff.addedOrModifiedFiles(), filesToRm);
             if(changesToRm.length > 0){
-                throw new Error ("these files have chnages:\n" + changesToRm.join("\n") + "\n");
+                throw new Error ("these files have changes:\n" + changesToRm.join("\n") + "\n");
 
             }else{
                 filesToRm.map(files.workingCopyPath).filter(fs.existsSync).forEach(fs.unlinkSync)
@@ -139,6 +139,22 @@ const jitlet = module.exports = {
             }
             
          }
+    },
+
+    diff: function(ref1, ref2, opts) {
+        files.assertInRepo();
+        config.assertNotBare();
+
+        if(ref1 !== undefined && refs.hash(ref1) === undefined) {
+            throw new Error("ambiguous argument " + ref1 + ": unknown revision");
+        }else if(ref2 !== undefined && refs.hash(ref2) === undefined){
+            throw new Error("ambiguous argument " + ref2 + ": unknown revision");
+        }else{
+            const nameToStatus = diff.nameStatus(diff.diff(refs.hash(ref1), refs.hash(ref2)));
+            return Object.keys(nameToStatus)
+            .map(function(path) { return nameToStatus[path] + " " + path;})
+        }
+
     },
 
 

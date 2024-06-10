@@ -97,8 +97,8 @@ const jitlet = module.exports = {
         opts = opts || {};
 //creates a new branch that HEAD points at
         if(name === undefined) {
-            return Object.keys(refs.localHeads()).map(function(branch){
-                return (branch === refs.headBranchName() ? "* " : " ") + this.branch;
+            return Object.keys(refs.localHeads()).map((branch) => {
+                return (branch === refs.headBranchName() ? "* " : " ") + branch;
             }).join("\n") + "\n";
         }else if(refs.has("HEAD") === undefined) {
             throw new Error(refs.headBranchName() + " not a valid object name");
@@ -117,7 +117,7 @@ const jitlet = module.exports = {
         const toHash = refs.hash(ref);
         
         if(!objects.exist(toHash)) {
-            throw new Error(ref + " did not match any file(s) known to JitLet");
+            throw new Error(ref + " did not match any file(s) known to jitlet");
         }else if(objects.type(objects.read(toHash)) !== "commit") {
             throw new Error("reference is not a tree: " + ref);
         }else if(refs === refs.headBranchName() ||
@@ -126,7 +126,7 @@ const jitlet = module.exports = {
          }else {
             const paths = diff.changedFilesCommmitWouldOverwrite(toHash);
             if(paths.length > 0){
-                throw new Error("local chnages would be lost\n" + paths.join("\n") + "\n"); 
+                throw new Error("local changes would be lost\n" + paths.join("\n") + "\n"); 
             }else{
                 process.chdir(files.workingCopyPath());
                 const isDetachingHead = object.exists(ref);
@@ -172,6 +172,79 @@ const jitlet = module.exports = {
             return "\n";
         }
     },
+
+    fetch: function(remote, branch, _) {
+        files.assertInRepo();
+// records the commit that branch is at on remote, does not change the local branch
+        if(remote === undefined || branch === undefined){
+            throw new Error("unsupported")
+        }else if(!(remote in config.read().remote)){
+            throw new Error(remote + " does not appear to b ea jitlet repository");
+        }else{
+            const remoteUrl = config.read().remote[remote].url;
+            const remoteRef = refs.toRemoteRef(remote, branch);
+            const newHash = util.onRemote(remoteUrl)(refs.hash, branch);
+            if(newHash === undefined){
+                throw new Error("couldn't find remote ref " + branch);
+            }else{
+                const oldHash = refs.hash(remoteRef);
+                const remoteObjects = util.onRemote(remoteUrl)(objects.allObjects);
+                remoteObjects.forEach(objects.write);
+                jitlet.update_ref(remoteRef, newHash);
+                refs.write("FETCH_HEAD", newHash + " branch " + branch + " of " + remoteUrl);
+                
+                return ["From" + remoteUrl,
+                    "Count " + remoteObjects.length,
+                    branch + " -> " + remote + "/" + branch + 
+                    (merge.isAForceFetch(oldHash, newHash) ? " (forced)" : "")].join("\n")
+            }
+        }
+    },
+
+    merge: function(ref, _) {
+//finds the set of differnces between the commit that the currently checked out branch is on and the commit that ref poitns to.
+//finds or creates a commit that applies these differences to the checked out branch.
+        files.assertInRepo();
+        config.assertNotBare();
+
+        const receiverHash = refs.hash("HEAD")
+        const giverHash = refs.hash(ref);
+        
+        if(refs.isHeadDetatched()){
+            throw new Error("unsopported");
+        }else if(giverHash === undefined || objects.type(objects.read(giverHash)) !== "commit"){
+            throw new Error(ref + ": expected commit type");
+        }else if(objects.isUpToDate(receiverHash, giverHash)) {
+            return "Already up-to-date";
+        }else{
+            const paths = diff.changedFilesCommitWouldOverwrite(giverHash);
+            if(paths.length > 0) {
+                throw new Error("local chnages would be lost\n" + paths.join("\n") + "\n");
+            }else if(merge.canFastForward(receiverHash, giverHash)){
+                merge.writeFastForwardMerge(receiverHash, giverHash);
+                return "Fast-forward"
+            }else{
+                merge.writeNonFastForwardMerge(receiverHash, giverHas, ref);
+                if(merge.hasConflicts(receiverHash, giverHash)) {
+                    return "Automatic merge failed. Fix conflicts and commit the result.";
+                }else{
+                    return jitlet.commit()
+                }
+            }
+        }
+    },
+
+    pull: function (remote, branch, _) {
+// fetches the commit that branch is on at remote, merges that commit into the current branch
+        files.assertInRepo();
+        config.assertNotBare();
+        jitlet.fetch(remote, branch);
+        return jitlet.merge("FETCH_HEAD");
+    },
+
+
+
+
 
 
 

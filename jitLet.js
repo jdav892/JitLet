@@ -159,10 +159,14 @@ const jitlet = module.exports = {
     },
 
     remote: function(command, name, path, _) {
+// records the locations of remote versions of the repo
         files.assertInRepo();
         
         if(command !== "add"){
+            throw new Error("unsupported");
+        }else if(name in config.read()["remote"]){
             throw new Error("remote " + name + " already exists");
+
         }else{
             config.write(util.setIn(config.read(), ["remote", name, "url", path]));
             return "\n";

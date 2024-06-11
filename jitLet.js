@@ -285,13 +285,99 @@ const jitlet = module.exports = {
         return this.status.toString();
     },
 
+    clone: function(remotePath, targetPath, opts) {
+// copies the repository at remotePath to targetPath
+        opts = opts || {};
+        if(remotePath === undefined || targetPath == undefined) {
+            throw new Error("you must specify remote path and target path");
+        }else if(!fs.existsSync(remotePath) || !util.onRemote(remotePath)(files.inRepo)){
+            throw new Error("repository " + remotePath + " does not exist");
+        }else if(fs.existsSync(targetPath) && fs.readdirSync(targetPath).length > 0){
+            throw new Error(targetPath + " already exists and is not empty");
+        }else{
+            remotePath = nodePath.resolve(process.cwd(), remotePath);
+            if(!fs.existsSync(targetPath)){
+                fs.mkdirSync(targetPath);
+            }
+            util.onRemote(targetPath)(function(){
+                jitlet.init(opts);
+                jitlet.remote("add", "origin", nodePath.relative(process.cwd(), remotePath));
+                const remoteHeadHash = util.onRemote(remotePath)(refs.hash, "master");
+                
+                if(remoteHeadHash !== undefined){
+                    jitlet.fetch("origin", "main");
+                    merge.writeFastForwardMerge(undefined, remoteHeadHash);
+                }
+            });
 
+            return "Cloning into " + targetPath;
+        }
+    }, 
 
+    update_index: function(path, opts){
+// adds the contents of the file at path to the index or removes the file from the index
+        files.assertInRepo();
+        config.assertNotBare();
+        opts = opts || {};
 
+        const pathFromRoot = files.pathFromRepoRoot(path);
+        const isOnDisk = fs.existsSync(path);
+        const isInIndex = index.hasFile(path, 0);
 
+        if(isOnDisk && fs.statSync(path).isDirectory()){
+            throw new Error(pathFromRoot + " is a directory -add files inside\n");
+        }else if(opts.remove && !isOnDisk && isInIndex){
+            if(index.isFileInConflict(path)){
+                throw new Error("unsupported")
+            }else{
+                index.writeRm(path);
+                return "\n";
+            }
+        }
+        else if(opts.remove && !isOnDisk && !isInIndex){
+            return "\n";
+        }else if(!opts.add && isOnDisk && !isInIndex){
+            throw new Error("cannot add " + pathFromRoot + " to index - use --add option\n");
+        }else if(isOnDisk && (opts.add || isInIndex)) {
+            index.writeNonConflict(path, files.read(files.workingCopyPath(path)));
+            return "\n";
+        }else if(!opts.remove && !isOnDisk){
+            throw new Error(pathFromRoot + " does not exist and --remove not passed\n")
+        }
+    },
 
+    write_tree: function(_){
+// takes the content of the index and stores a tree object that represents that content to the objects directory
+        files.assertInRepo();
+        return objects.writeTree(files.nestFlatTree(index.toc()));
+    },
 
+    update_ref: function(refToUpdate, refToUpdateTo, _) {
+//gets the hash of the commit that refToUpdateTo points at and sets refToUpdate to point at the same hash
+        files.assertInRepo();
 
+        const hash = refs.hash(refToUpdateTo);
 
+        if(!objects.exists(hash)){
+            throw new Error(refToUpdateTo + " not a valid SHA1(Secure Hash Algorithm 1)");
+        }else if(!refs.isRef(refToUpdate)){
+            throw new Error("cannot lock the ref " + refToUpdate);
+        }else if(objects.type(objects.read(hash)) !== "commit"){
+            const branch = refs.terminalRef(refToUpdate);
+            throw new Error(branch + " cannot refer to non-commit object " + hash + "\n");
+        }else{
+            refs.write(refs.terminalRef(refToUpdate), hash);
+        }
+    }
+};
 
+const refs = {
+
+    isRef: function(ref) {
+        return ref !== undefined &&
+         (ref.match("^refs/heads/[A-Za-z-]+$") ||
+          ref.match("^refs/remotes/[A-Za-z-]+/[A-Za-z-]+$") ||
+          ["HEAD", "FETCH_HEAD", "MERGE_HEAD"].indexOf(ref) !== -1)
+    },
+    
 }

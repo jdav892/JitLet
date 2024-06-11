@@ -77,7 +77,7 @@ const jitlet = module.exports = {
                 const conflictedPaths = index.conflictedPaths();
                 if(merge.isMergeInProgress() && conflictedPaths.length > 0) {
                     throw new Error(conflictedPaths.map(function(p) {return "U " + p;}).join("\n") + 
-                            "\ncannont commit because you have unmerged files\n")
+                            "\ncannot commit because you have unmerged files\n")
                 }else{
                     const m = merge.isMergeInProgress() ? files.read(files.jitletPath("MERGE_MSG")) : opts.m;
                     const commitHash = objects.writeCommit(treeHas, m, refs.commitParentHashes());
@@ -124,7 +124,7 @@ const jitlet = module.exports = {
                  refs === files.read(files.jitletPath("HEAD"))) {
         return "Already on " + ref;
          }else {
-            const paths = diff.changedFilesCommmitWouldOverwrite(toHash);
+            const paths = diff.changedFilesCommitWouldOverwrite(toHash);
             if(paths.length > 0){
                 throw new Error("local changes would be lost\n" + paths.join("\n") + "\n"); 
             }else{
@@ -132,7 +132,7 @@ const jitlet = module.exports = {
                 const isDetachingHead = object.exists(ref);
                 workingCopy.write(diff.diff(refs.hash("HEAD"), toHash));
                 refs.write("HEAD", isDetachingHead ? toHash : "ref:" + refs.toLocalRef(ref));
-                index.write(index.tocToindex(objects.commitToc(toHash)));
+                index.write(index.tocToIndex(objects.commitToc(toHash)));
                 return isDetachingHead ?
                  "Note: checking out " + toHash + "\nYou are in detached HEAD state." :
                  "Switched to branch" + ref;
@@ -202,7 +202,7 @@ const jitlet = module.exports = {
     },
 
     merge: function(ref, _) {
-//finds the set of differnces between the commit that the currently checked out branch is on and the commit that ref poitns to.
+//finds the set of differences between the commit that the currently checked out branch is on and the commit that ref points to.
 //finds or creates a commit that applies these differences to the checked out branch.
         files.assertInRepo();
         config.assertNotBare();
@@ -210,7 +210,7 @@ const jitlet = module.exports = {
         const receiverHash = refs.hash("HEAD")
         const giverHash = refs.hash(ref);
         
-        if(refs.isHeadDetatched()){
+        if(refs.isHeadDetached()){
             throw new Error("unsupported");
         }else if(giverHash === undefined || objects.type(objects.read(giverHash)) !== "commit"){
             throw new Error(ref + ": expected commit type");
@@ -279,7 +279,7 @@ const jitlet = module.exports = {
 
     status: function(_){
 //reports the state of the repo: the current branch, untracked files, conflicted files,
-//files that are staged to be commited and files that are not staged to be committed
+//files that are staged to be committed and files that are not staged to be committed
         files.assertInRepo();
         config.assertNotBare();
         return this.status.toString();
@@ -370,14 +370,15 @@ const jitlet = module.exports = {
         }
     }
 };
-
+// refs are names for commit hashes. The ref is the name of a file, some refs represent local branches, some represent remote branches, some represent important states of the repo
 const refs = {
 
     isRef: function(ref) {
+// returns true if ref matches valid qualified ref syntax. 
         return ref !== undefined &&
          (ref.match("^refs/heads/[A-Za-z-]+$") ||
           ref.match("^refs/remotes/[A-Za-z-]+/[A-Za-z-]+$") ||
           ["HEAD", "FETCH_HEAD", "MERGE_HEAD"].indexOf(ref) !== -1)
     },
-    
+
 }

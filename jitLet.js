@@ -381,4 +381,119 @@ const refs = {
           ["HEAD", "FETCH_HEAD", "MERGE_HEAD"].indexOf(ref) !== -1)
     },
 
+    terminalRef: function(ref){
+// resolves ref to the most specific ref possible
+        if(ref === "HEAD" && !refs.isHeadDetached()) {
+            return files.read(files.jitletPath("HEAD")).match("ref: (refs/heads/.+)")[1];
+        }else if(refs.isRef(ref)){
+            return ref;
+        }else{
+            return refs.toLocalRef(ref);
+        }
+    },
+
+    hash: function(refOrHash){
+// returns the has that refOrHash points to
+        if(objects.exists(refOrHash)){
+            return refOrHash;
+        }else{
+            const terminalRef = refs.terminalRef(refOrHash);
+            if(terminalRef === "FETCH_HEAD"){
+                return refs.fetchHeadBranchToMerge(refs.headBranchName());
+            }else if(refs.exists(terminalRef)){
+                return files.read(files.jitletPath(terminalRef))
+            }
+        }
+    },
+    
+    isHeadDetached: function(){
+// returns true if HEAD contains a commit hash rather than a branch ref
+        return files.read(files.jitletPath("HEAD")).match("refs") == null;
+    },
+
+    isCheckedOut: function(){
+// returns true if the repo is not bare and HEAD is pointing at the branch called branch
+        return !config.isBare() && refs.headBranchName() === branch;
+    },
+
+    toLocalRef: function(name) {
+// converts the branch name into a qualified local branch
+        return "refs/heads/" + name;
+    },
+
+    toRemoteRef: function(remote, name){
+// converts remote and branch name (name) into a qualified remote branch
+        return "refs/remotes/" + remote + "/" + name;
+    },
+
+    write: function(ref, content){
+// sets the content of the file for the qualified ref (ref to content)
+        if(refs.isRef(ref)){
+            files.write(files.jitletPath(nodePath.normalize(ref)), content);
+        }
+    },
+
+    rm: function(ref){
+// removes the file for the qualified ref (ref)
+        if(refs.isRef(ref)) {
+            fs.unlinkSync(files.jitletPath(ref));
+        }
+    },
+
+    fetchHeadBranchToMerge: function(branchName){
+// reads the FETCH_HEAD file and gets the hash that the remote branchName is pointing at
+        return util.lines(files.read(files.jitletPath("FETCH_HEAD")))
+        .filter(function(l) {return l.match("^.+ branch " + branchName + " of"); })
+        .map(function(l){ return l.match("^.[^ ]+)") [1];})[0];
+    },
+
+    localHeads: function(){
+// returns a JS object that maps local branch names to the hash of the commit they point to 
+        return fs.readdirSync(nodePath.join(files.jitletPath(), "refs", "heads"))
+        .reduce(function(o, n) {return util.setIn(o, [n, refs.hash(n)]);}, {});
+    },
+
+    exists: function(ref){
+// returns true if the qualified ref exists.
+        return refs.isRef(ref) && fs.existsSync(files.jitletPath(ref));
+    },
+
+    headBranchName: function() {
+// returns the name of the branch that HEAD is pointing at
+        if(!refs.isHeadDetached()){
+            return files.read(files.jitletPath("HEAD")).match("refs/heads/(.+)")[1];
+        }
+    },
+
+    commitParentHashes: function(){
+        const headHash = refs.hash("HEAD");
+
+        if(merge.isMergeInProgress()){
+            return[headHash, refs.hash("MERGE_HEAD")];
+        }else if(headHash === undefined){
+            return [];
+        }else{
+            return [headHash];
+        }
+    }
+};
+
+const objects = {
+// objects are files in the .jitlet/objects directory.
+// a blob objects stores the content of a file
+// a tree object stores a list of files and directories in a directory in the repository
+// a commit object stores a pointer to a tree object and a message
+    writeTree: function(tree){
+        const treeObject = Object.keys(tree).map(function(key){
+            if(util.isString(tree[key])){
+                return "blob" + tree[key] + " " + key;
+            }else{
+                return "tree " + objects.writeTree(tree[key]) + " " + key;
+            }
+        }).join("\n") + "\n"
+        return objects.write(treeObject);
+    },
+
+    
+
 }

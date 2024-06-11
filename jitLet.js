@@ -466,6 +466,7 @@ const refs = {
     },
 
     commitParentHashes: function(){
+// returns the array of the commits that would be the parents of the next commit
         const headHash = refs.hash("HEAD");
 
         if(merge.isMergeInProgress()){
@@ -494,6 +495,6 @@ const objects = {
         return objects.write(treeObject);
     },
 
-    
+
 
 }

@@ -179,7 +179,7 @@ const jitlet = module.exports = {
         if(remote === undefined || branch === undefined){
             throw new Error("unsupported")
         }else if(!(remote in config.read().remote)){
-            throw new Error(remote + " does not appear to b ea jitlet repository");
+            throw new Error(remote + " does not appear to be a jitlet repository");
         }else{
             const remoteUrl = config.read().remote[remote].url;
             const remoteRef = refs.toRemoteRef(remote, branch);
@@ -485,6 +485,7 @@ const objects = {
 // a tree object stores a list of files and directories in a directory in the repository
 // a commit object stores a pointer to a tree object and a message
     writeTree: function(tree){
+// stores a graph of tree objects that represent the content currently in the index
         const treeObject = Object.keys(tree).map(function(key){
             if(util.isString(tree[key])){
                 return "blob" + tree[key] + " " + key;
@@ -495,6 +496,39 @@ const objects = {
         return objects.write(treeObject);
     },
 
+    fileTree: function(treeHash, tree){
+// takes a hash tree and finds the corresponding tree object
+        if(tree === undefined) {return objects.fileTree(treeHash, {});}
+        util.lines(objects.read(treeHash)).forEach(function(line){
+            const lineTokens = line.split(/ /);
+            tree[lineTokens[2]] = lineTokens[0] === "tree" ?
+                objects.fileTree(lineTokens[1], {}) :
+                lineTokens[1];
+        });
+        return tree;
+    },
+
+    writeCommit: function(treeHash, message, parentHashes){
+// creates a commit object and writes it to the objects database
+        return objects.write("commit" + treeHash + "\n" +
+            parentHashes
+            .map(function(h) {return "parent " + h + "\n";}).join("") +
+            "Date " + new Date().toString() + "\n" +
+            "\n" +
+            "   " + message + "\n");
+    },
+
+    write: function(str){
+// writes str to the objects database
+        files.write(nodePath.join(files.jitletPath(), "objects", utils.hash(str)), str);
+        return util.hash(str)
+    },
 
 
 }
+
+
+
+
+
+

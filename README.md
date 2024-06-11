@@ -1,1 +1,1 @@
-A basic clone of Git written in node.js for deeper understanding(with personal features added and open to suggestions to make this a smoother experience)
+A basic clone of Git written in node.js for deeper understanding(with personal features added and open to suggestions to make this a smoother experience). This will probably be broken up into smaller modules at a later date.

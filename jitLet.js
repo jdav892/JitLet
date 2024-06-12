@@ -305,7 +305,7 @@ const jitlet = module.exports = {
                 const remoteHeadHash = util.onRemote(remotePath)(refs.hash, "master");
                 
                 if(remoteHeadHash !== undefined){
-                    jitlet.fetch("origin", "main");
+                    jitlet.fetch("origin", "master");
                     merge.writeFastForwardMerge(undefined, remoteHeadHash);
                 }
             });
@@ -523,6 +523,45 @@ const objects = {
         files.write(nodePath.join(files.jitletPath(), "objects", utils.hash(str)), str);
         return util.hash(str)
     },
+    
+    isUpToDate: function(receiverHash, giverHash){
+// returns true if the giver commit has already been incorporated into the receiver commit
+        return receiverHash !== undefined &&
+        (receiverHash === giverHash || objects.isAncestor(receiverHash, giverHash)) 
+    },
+
+    exists: function(objectHash){
+// returns true if there is an object in the database called objectHash
+        return objectHash !== undefined && 
+        fs.existsSync(nodePath.join(files.jitletPath(), "objects", objectHash));
+    },
+
+    read: function(objectHash){
+// returns the content of the object called objectHash
+        if(objectHash !== undefined){
+            const objectPath = nodePath.join(files.jitletPath(), "objects", objectHash);
+            if(fs.existsSync(objectPath)){
+                return files.read(objectPath);
+            }
+        }
+    },
+
+    allObjects: function(){
+// returns an array of the string content of all the objects
+        return fs.readdirSync(files.jitletPath("objects")).map(objects.read);
+    },
+
+    type: function(str){
+// parses str as an object and returns its type: commit,tree, or blob
+        return {commit: "commit", tree: "tree", blob: "tree"}[str.split(" ")[0]] || "blob";
+    },
+
+    isAncestor: function(descendantHash, ancestorHash){
+// returns true if descendantHash is a descendant of ancestorHash
+        return objects.ancestors(descendantHash).indexOf(ancestorHash) !== - 1;
+
+    },
+
 
 
 }

@@ -603,7 +603,7 @@ const index = {
     read: function(){
 // returns the index as a JS object
         const indexFilePath = files.jitletPath("index");
-        return util.lines(fs.existsSync(indexFilePath) ? files.read(indexFilepath) : "\n")
+        return util.lines(fs.existsSync(indexFilePath) ? files.read(indexFilePath) : "\n")
             .reduce(function(idx, blobStr){
                 const blobData = blobStr.split(/ /);
                 idx[index.key(blobData[0], blobData[1])] = blobData[2];

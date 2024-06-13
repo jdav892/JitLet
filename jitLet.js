@@ -562,6 +562,37 @@ const objects = {
 
     },
 
+    ancestors: function(commitHash){
+// returns an array of the hashes of all the ancestor commits of commitHash
+        const parents = objects.parentHashes(objects.read(commitHash));
+        return util.flatten(parents.concat(parents.map(objects.ancestors)));
+    },
+
+    parentHashes: function(str){
+// parses str as a commit and returns the hashes of its parents
+        if(objects.type(str) === "commit"){
+            return str.split("\n")
+            .filter(function(line){ return line.match(/^parent/); })
+            .map(function(line){ return line.spit(" ")[1];})
+        }
+    },
+
+    treeHash: function(str){
+// parses str as a commit and returns the tree it points at 
+        if(objects.type(str) === "commit"){
+            return str.split(/\s/)[1];
+        }
+    },
+
+    commitToc: function(hash){
+// takes the hash of a commit and reads the content stored in the tree on the commit.
+        return files.flattenNestedTree(objects.fileTree(objects.treeHash(objects.read(hash))));
+    },
+
+    
+
+
+
 
 
 }

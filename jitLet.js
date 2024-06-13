@@ -849,7 +849,17 @@ const merge = {
         });
     },
 
-    
+    writeFastForwardMerge: function(receiverHash, giverHash){
+// fast forwarding means making the current branch reflect the commit that giverHash points at
+        refs.write(refs.toLocalRef(refs.headBranchName()), giverHash);
+        index.write(index.tocToIndex(objects.commitToc(giverHash)));
+        if(!config.isBare()){
+            const receiverToc = receiverHash === undefined ? {} : objects.commitToc(receiverHash);
+            workingCopy.write(diff.tocDiff(receiverToc, objects.commit(giverHash)));
+        }
+    },
+
+
 
 
 

@@ -724,6 +724,102 @@ const diff = {
             .filter(function(p) { return dif[p].status !== diff.FILE_STATUS.SAME; })
             .reduce(function(ns, p) { return util.setIn(ns, [p, dif[p].status]); }, {});
     },
+
+    tocDiff: function(receiver, giver, base){
+//takes three JS objects that map file paths to hashes of file content
+        function fileStatus(receiver, giver, base){
+// takes three strings that represent different versions of the content of a file
+            const receiverPresent = receiver !== undefined;
+            const basePresent = base !== undefined;
+            const giverPresent = giver !== undefined;
+            if(receiverPresent && giverPresent && receiver !== giver){
+                if (receiver !== base && giver !== base) {
+                    return diff.FILE_STATUS.CONFLICT;
+                }else{
+                    return diff.FILE_STATUS.MODIFY
+                }
+            }else if(receiver === giver) {
+                return diff.FILE_STATUS.SAME;
+            }else if((!receiverPresent && !basePresent && giverPresent) || (receiverPresent && !basePresent && !giverPresent)) {
+                return diff.FILE_STATUS.ADD;
+            }else if((receiverPresent && basePresent && !giverPresent) ||
+            (!receiverPresent && basePresent && giverPresent)) {
+                return diff.FILE_STATUS.DELETE;
+            }
+        };
+        base = base || receiver;
+
+        const paths = Object.keys(receiver).concat(Object.keys(base)).concat(Object.keys(giver));
+
+        return util.unique(paths).reduce(function (idx, p){
+            return util.setIn(idx, [p, {
+                status: fileStatus(receiver[p], giver[p], base[p]),
+                receiver: receiver[p],
+                base: base[p],
+                giver: giver[p]
+            }]);
+        }, {});
+    },
+
+    changedFilesCommitWouldOverwrite: function(hash){
+// gets a list of files in the working copy
+        const headHash = refs.hash("HEAD");
+        return util.intersection(Object.keys(diff.nameStatus(diff.diff(headHash))), 
+        Object.keys(diff.nameStatus(diff.diff(headHash,hash))));
+    },
+    
+    addedOrModifiedFiles: function(){
+//returns a list of files that have been added to or modified in the working copy since the last commit
+        const headToc = refs.hash("HEAD") ? objects.commitToc(refs.hash("HEAD")) : {};
+        const wc = diff.nameStatus(diff.tocDiff(headToc, index.workingCopyToc()));
+        return Object.keys(wc).filter(function(p) { return wc[p] !== diff.FILE_STATUS.DELETE; });
+    }
+};
+
+const merge = {
+
+    commonAncestor: function(aHash, bHash){
+// returns the hash of the commit that is the most recent common ancestor of aHash and bHash
+        const sorted = [aHash, bHash].sort();
+        aHash = sorted[0];
+        bHash = sorted[1];
+        const aAncestors = [aHash].concat(objects.ancestors(aHash));
+        const bAncestors = [bHash].concat(objects.ancestors(bHash));
+        return util.intersection(aAncestors, bAncestors)[0];
+    },
+
+    isMergeInProgress: function(){
+// returns true if the repository is in the middle of a merge
+        return refs.hash("MERGE_HEAD");
+    },
+
+    canFastForward: function(receiverHash, giverHash){
+// a fast forward is possible if the changes made to get to the giverHash commit already incorporate the changes made to get the receiverHash commit.
+        return receiverHash === undefined || objects.isAncestor(giverHash, receiverHash);
+    },
+
+    isAForceFetch: function(receiverHash, giverHash){
+// returns true if hash for local commit (receiverHash) is not ancestor of hash for fetched commit (giverHash)
+        return receiverHash !== undefined && !objects.isAncestor(giverHash, ancestorHash);
+    },
+
+    hasConflicts: function(receiverHash, giverHash){
+// returns true if merging the commit for giverHash into the commit for receiverHash would produce conflicts
+        const mergeDiff = merge.mergeDiff(receiverHash, giverHash);
+        return Object.keys(mergeDiff)
+        .filter(function(p) { return mergeDiff[p].status === diff.FILE_STATUS.CONFLICT}).length > 0
+    },
+
+    mergeDiff: function(receiverHash, giverHash){
+//  returns a diff that represents the changes to get from the receiverHash commit to the giverHash commit     
+        return diff.tocDiff(objects.commitToc(receiverHash),
+                            objects.commitToc(giverHash),
+                            objects.commitToc(merge.commonAncestor(receiverHash, giverHash)));
+    },
+
+
+
+
 }
 
 

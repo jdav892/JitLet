@@ -859,14 +859,30 @@ const merge = {
         }
     },
 
+    writeNonFastForwardMerge: function(receiverHash, giverHash, giverRef){
+// a non fast forward merge creates a merge commit to integrate the content of the receiverHash commit with the content of the giverHash commit.
+        refs.write("MERGE_HEAD", giverHash);
+        merge.writeMergeMsg(receiverHash, giverHash, giverRef);
+        merge.writeIndex(receiverHash, giverHash);
+        if(!config.isBare()){
+            workingCopy.write(merge.mergeDiff(receiverHash, giverHash))
+        }
+    }
+};
 
-
-
-
-
+const workingCopy = {
+// the working copy is the set of files that are inside the repository excluding the .jitlet directory
+    write: function(dif){
+// takes a diff object and applies the changes in it to the working copy
+        function composeConflict(receiverFileHash, giverFileHash){
+// takes the hashes of two versions of the same file and returns a string that represents the two versions as a conflicted file
+            return "<<<<<<\n" + objects.read(receiverFileHash) + 
+            "\n======\n" + objects.read(giverFileHash) + "\n>>>>>>\n";
+        };
+// if there is a conflict the whole file will be marked as a conflict rather than the specific line 
+        
+    }
 }
-
-
 
 
 

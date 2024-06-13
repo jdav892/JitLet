@@ -589,12 +589,27 @@ const objects = {
         return files.flattenNestedTree(objects.fileTree(objects.treeHash(objects.read(hash))));
     },
 
+
+};
+
+const index = {
+
+    hasFile: function(path, state){
+        return index.read()[index.key(path, stage)] !== undefined;
+    },
+
+    read: function(){
+        const indexFilePath = files.jitletPath("index");
+        return util.lines(fs.existsSync(indexFilePath) ? files.read(indexFilepath) : "\n")
+            .reduce(function(idx, blobStr){
+                const blobData = blobStr.split(/ /);
+                idx[index.key(blobData[0], blobData[1])] = blobData[2];
+                return idx;
+            }, {});
+    },
+
     
-
-
-
-
-
+    
 }
 
 

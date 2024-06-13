@@ -634,6 +634,16 @@ const index = {
         return index.hasFile(path, 2);
     },
 
+    conflictedPaths: function(){
+// returns an array of all the paths of files that are in conflict
+        const idx = index.read();
+        return Object.keys(idx)
+            .filter(function(k) { return index.keyPieces(k).stage === 2; })
+            .map(function(k) { return index.keyPieces(k).path; });
+    },
+
+    
+
 
 
     

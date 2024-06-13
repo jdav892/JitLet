@@ -642,12 +642,90 @@ const index = {
             .map(function(k) { return index.keyPieces(k).path; });
     },
 
+
+    writeNonConflict: function(path, content){
+// sets a non conflicting index entry for the file at path to the hash of content
+        index.writeRm(path);
+        index._writeStageEntry(path, 0, content);
+    },
+
+    writeConflict: function(path, receiverContent, giverContent, baseContent){
+//sets an index entry for the file at path that indicates the file is in conflict after a merge.
+        if(baseContent !== undefined){
+            index._writeStageEntry(path, 1, baseContent);
+        }
+        index._writeStageEntry(path, 2, receiverContent);
+        index._writeStageEntry(path, 3, receiverContent);
+    },
+
+    writeRm: function(path){
+// removes the index entry for the file at path
+        const idx = index.read();
+        [0, 1, 2, 3].forEach(function(stage) { delete idx[index.key(path, stage)]; });
+        index.write(idx);
+    },
+
+    _writeStageEntry: function(path, stage, content){
+// adds the hashed content to the index at key (path, stage)
+        const idx = index.read();
+        idx[index.key(path, stage)] = objects.write(content);
+        index.write(idx);
+    },
+
+    write: function(index){
+// takes a JS object that represents an index and writes it to .jitlet/index
+        const indexStr = Object.keys(index)
+            .map(function(k) { return k.split(",")[0] + " " + k.split(",")[1] + " " + index[k] })
+            .join("\n") + "\n";
+        files.write(files.jitletPath("index"), indexStr);
+    },
+
+    workingCopyToc: function(){
+// returns an object that maps the file in the working copy to hashes of those files' content
+        return Object.keys(index.read())
+            .map(function(k) { return k.split(",")[0]; })
+            .filter(function(p) { return fs.existsSync(files.workingCopyPath(p)); })
+            .reduce(function(idx, p) {
+                idx[p] = util.hash(files.read(files.workingCopyPath(p)))
+                return idx;
+            }, {});
+    },
+
+    tocToIndex: function(toc){
+// returns an object that maps the file paths in the working copy to hashes of those files' content
+        return Object.keys(toc)
+            .reduce(function(idx, p) { return util.setIn(idx, [index.key(p, 0), toc[p]]); }, {})
+    },
+
+    matchingFiles: function(pathSpec){
+// returns all the paths in the index that match pathSpec it matches relative to currentDir
+        const searchPath = files.pathFromRepoRoot(pathSpec);
+        return Object.keys(index.toc())
+            .filter(function(p) { return p.match("^" + searchPath.replace(/\\/g, "\\\\")); });
+        
+    }
     
+};
 
+const diff = {
+// Produces diffs between versions of the repository content.
+    FILE_STATUS: {ADD: "A", MODIFY: "M", DELETE: "D", SAME: "SAME", CONFLICT: "CONFLICT"},
 
+    diff: function(hash1, hash2){
+// returns a diff object. Passes from hash1 to hash2 if hash1 does not pass, then moves to working copy
+        const a = hash1 === undefined ? index.toc() : objects.commitToc(hash1);
+        const b = hash2 === undefined ? index.workingCopyToc() : objects.commitToc(hash2);
+        return diff.tocDiff(a, b);
+    },
 
-    
+    nameStatus: function(dif){
+// takes a diff and returns a JS object that maps from file paths to file statuses
+        return Object.keys(dif)
+            .filter(function(p) { return dif[p].status !== diff.FILE_STATUS.SAME; })
+            .reduce(function(ns, p) { return util.setIn(ns, [p, dif[p].status]); }, {});
+    },
 }
+
 
 
 

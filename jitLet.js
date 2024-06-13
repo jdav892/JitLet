@@ -593,12 +593,15 @@ const objects = {
 };
 
 const index = {
-
+// the index maps files to hashes of their content, when a commit is created a tree is built that mirrors the content of the index
+// index entry keys are a (path, stage) combination
     hasFile: function(path, state){
+// returns true if there is an entry for path in the index state
         return index.read()[index.key(path, stage)] !== undefined;
     },
 
     read: function(){
+// returns the index as a JS object
         const indexFilePath = files.jitletPath("index");
         return util.lines(fs.existsSync(indexFilePath) ? files.read(indexFilepath) : "\n")
             .reduce(function(idx, blobStr){
@@ -608,7 +611,31 @@ const index = {
             }, {});
     },
 
-    
+    key: function(path, stage){
+// returns an index key made from path and stage
+        return path + "," + stage;
+    },
+
+    keyPieces: function(key){
+// returns a JS object that contains the path and stage of key
+        const pieces = key.split(/,/);
+        return { path: pieces[0], stage: parseInt(pieces[1]) };
+    },
+
+    toc: function(){
+// returns an object that maps file paths to hashes of their content
+        const idx = index.read();
+        return Object.keys(idx)
+            .reduce(function(obj, k) { return util.setIn(obj, [k.split(",")[0], idx[k]]); }, {});
+    },
+
+    isFileInConflict: function(path){
+// returns true if the file for path is in conflict
+        return index.hasFile(path, 2);
+    },
+
+
+
     
 }
 

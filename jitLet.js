@@ -829,6 +829,28 @@ const merge = {
         files.write(files.jitletPath("MERGE_MSG"), msg);
     },
 
+    writeIndex: function(receiverHash, giverHash){
+//  merges the giverHash commit into the receiverHash commit and writes the merged content to the index
+        const mergeDiff = merge.mergeDiff(receiverHash, giverHash);
+        index.write({});
+        Object.keys(mergeDiff).forEach(function(p){
+            if(mergeDiff[p].status === diff.FILE_STATUS.CONFLICT){
+                index.writeConflict(p,
+                                    objects.read(mergeDiff[p].receiver),
+                                    objects.read(mergeDiff[p].giver),
+                                    objects.read(mergeDiff[p].base));
+            }else if(mergeDiff[p].status === diff.FILE_STATUS.MODIFY){
+                index.writeNonConflict(p, objects.read(mergeDiff[p].giver));
+            }else if(mergeDiff[p].status === diff.FILE_STATUS.ADD ||
+                     mergeDiff[p].status === diff.FILE_STATUS.SAME){
+            const content = objects.read(mergeDiff[p].receiver || mergeDiff[p].giver);
+            index.writeNonConflict(p, content);
+                     }
+        });
+    },
+
+    
+
 
 
 

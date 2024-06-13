@@ -817,6 +817,18 @@ const merge = {
                             objects.commitToc(merge.commonAncestor(receiverHash, giverHash)));
     },
 
+    writeMergeMsg: function(receiverHash, giverHash, ref){
+// creates a message for the merge commit that will potentially be created when the giverHash commit is merged into the receiverHash commit
+        const msg = "Merge " + ref + " into " + refs.headBranchName();
+        const mergeDiff = merge.mergeDiff(receiverHash, giverHash);
+        const conflicts = Objects.keys(mergeDiff)
+            .filter(function(p) { return mergeDiff[p].status === diff.FILE_STATUS.CONFLICT});
+        if (conflicts.length > 0){
+            msg += "\nConflicts:\n" + conflicts.join("\n");
+        }
+        files.write(files.jitletPath("MERGE_MSG"), msg);
+    },
+
 
 
 

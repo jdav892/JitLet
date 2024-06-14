@@ -1012,8 +1012,22 @@ const util = {
         return arr.reduce(function(a, p) { return a.indexOf(p) === - 1 ? a.concat(p) : a; }, []);
     },
 
-    
-}
+    intersection : function(a, b){
+// takes two arrays a and b, returns an array of the items that appear in both
+        return a.filter(function(e) { return b.indexOf(e) !== - 1});
+    },
+
+    onRemote: function(remotePath){
+        return function(fn){
+            const originalDir = process.cwd();
+            process.chdir(remotePath);
+            const result = fn.apply(null, Array.prototype.slice.call(arguments, 1));
+            process.chdir(originalDir);
+            return result;
+        };
+    }
+};
+
 
 
 

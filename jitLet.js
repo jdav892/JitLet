@@ -1067,7 +1067,86 @@ const files = {
             }
         });
     },
-}
+
+    rmEmptyDirs: function(path){
+// recursively removes all the empty directories inside path
+        if(fs.statSync(path).isDirectory()) {
+            fs.readdirSync(path).forEach(function(c) { files.rmEmptyDirs(nodePath.join(path, c)); });
+            if(fs.readdirSync(path).length === 0) {
+                fs.rmdirSync(path);
+            }
+        }
+    },
+
+    read: function(path){
+// returns the contents of the file at path as a string
+        if(fs.existsSync(path)) {
+            return fs.readFileSync(path, "utf8");
+        }
+    },
+
+    jitletPath: function(path){
+// returns a string made by concatenating path to the absolute path of the .jitlet directory of the repository
+        function jitletDir(dir){
+            if(fs.existsSync(dir)){
+                const potentialConfigFile = nodePath.join(dir, "config");
+                const potentialJitletPath = nodePath.join(dir, ".jitlet");
+                if(fs.existsSync(potentialConfigFile) &&
+                   fs.statSync(potentialConfigFile).isFile() &&
+                   files.read(potentialConfigFile).match(/\[core\]/)){
+                    return dir;
+                   }else if(fs.existsSync(potentialJitletPath)){
+                    return potentialJitletPath;
+                   }else if(dir !== "/"){
+                    return jitletDir(nodePath.join(dir, ".."));
+                   }
+            }
+        };
+        const jDir = jitletDir(process.cwd());
+        if(jDir !== undefined){
+            return nodePath.join(jDir, path || "");
+        }
+    },
+
+    workingCopyPath: function(path){
+// returns a string made by concatenating path to the absolute path of the root of the repository
+        return nodePath.join(nodePath.join(files.jitletPath(), ".."), path || "");
+    },
+
+    isRecursive: function(path){
+// returns an array of all the files around in a recursive search of path
+        if(!fs.existsSync(path)){
+            return [];
+        }else if(fs.statSync(path).isFile()){
+            return [path];
+        }else if(fs.statSync(path).isDirectory()) {
+            return fs.readdirSync(path).reduce(function(fileList, dirChild){
+                return fileList.concat(files.isRecursive(nodePath.join(path, dirChild)));
+            }, []);
+        }
+    },
+
+    nestFlatTree: function(obj){
+// takes obj, a mapping of file path strings to content and returns a nested JS obj where each key represents a sub directory
+        return Object.keys(obj).reduce(function(tree, wholePath){
+            return util.setIn(tree, wholepath.split(nodePath.join(path, dirChild)));
+        }, []);
+    },
+    
+    flattenNestedTree: function(tree, obj, prefix){
+// takes tree, a nested JS object where each key represents a sub directory and returns a JS object mapping file path strings to content
+        if(obj === undefined) { return files.flattenNestedTree(tree, {}, ""); }
+        Objects.keys(tree).forEach(function(dir){
+            const path = nodePath.join(prefix, dir);
+            if(util.isString(tree[dir])) {
+                obj[path] = tree[dir];
+            }else{
+                files.flattenNestedTree(tree[dir], obj, path);
+            }
+        });
+        return obj;
+    }
+};
 
 
 

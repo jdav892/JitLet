@@ -879,10 +879,27 @@ const workingCopy = {
             return "<<<<<<\n" + objects.read(receiverFileHash) + 
             "\n======\n" + objects.read(giverFileHash) + "\n>>>>>>\n";
         };
-// if there is a conflict the whole file will be marked as a conflict rather than the specific line 
-        
+// if there is a conflict the whole file will be marked as a conflict rather than the specific line
+        Object.keys(dif).forEach(function(p){
+// go through all the files that have changed, updating the working copy for each
+            if(dif[p].status === diff.FILE_STATUS.ADD){
+                files.write(files.workingCopyPath(p), objects.read(dif[p].receiver || dif[p].giver));
+            }else if(dif[p].status === diff.FILE_STATUS.CONFLICT){
+                files.write(files.workingCopyPath(p), composeConflict(dif[p].receiver, dif[p].giver));
+            }else if(dif[p].status === diff.FILE_STATUS.MODIFY){
+                files.write(files.workingCopyPath(p), objects.read(dif[p].giver));
+            }else if(dif[p].status === diff.FILE_STATUS.DELETE){
+                fs.unlinkSync(files.workingCopyPath(p));
+            }
+        });
+        fs.readdirSync(files.workingCopyPath())
+// remove any directories that have been left empty after the deletion of all the files in them
+            .filter(function(n) { return n !== ".jitlet"; })
+            .forEach(files.rmEmptyDirs);
     }
-}
+};
+
+
 
 
 

@@ -968,6 +968,53 @@ const config = {
 
 };
 
+const util = {
+    isString: function(thing){
+// returns true if thing is a string
+        return typeof thing === "string";
+    },
+
+    hash: function(string){
+// returns a hash of string
+        const hashInt = 0;
+        for(let i = 0; i < string.length; i++){
+            hashInt = hashInt * 31 + string.charCodeAt(i);
+            hashInt = hashInt | 0;
+        }
+        return Math.abs(hashInt).toString(16)
+    },
+
+    setIn: function(obj, arr){
+// takes an array that contains 1 or more keys and has one value at the end
+        if(arr.length === 2){
+            obj[arr[0]] = arr[1];
+        }else if(arr.length > 2){
+            obj[arr[0]] = obj[arr[0]] || {}
+            util.setIn(obj[arr[0]], arr.slice(1))
+        }
+        return obj;
+    },
+
+    lines: function(str){
+// takes a string, splits on new lines and returns an array of the lines that are not empty
+            return str.split("\n").filter(function(l) { return l !== ""; });
+    },
+
+    flatten: function(arr){
+// returns a flattened version of arr
+        return arr.reduce(function(a, e){
+            return a.concat(e instanceof Array ? util.flatten(e) : e);
+        }, {});
+    },
+
+    unique: function(arr){
+// returns the unique elements in arr
+        return arr.reduce(function(a, p) { return a.indexOf(p) === - 1 ? a.concat(p) : a; }, []);
+    },
+
+    
+}
+
 
 
 

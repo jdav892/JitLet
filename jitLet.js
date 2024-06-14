@@ -1028,6 +1028,47 @@ const util = {
     }
 };
 
+const files = {
+    
+    inRepo: function(){
+// returns true if the current working directory is inside a repository
+        return files.jitletPath() !== undefined;
+    },
+
+    assertInRepo: function(){
+// throws if the current working directory is not inside a repository
+        if(!files.inRepo()){
+            throw new Error("not a Jitlet repository")
+        }
+    },
+
+    pathFromRepoRoot: function(path){
+// returns path relative to the repo root
+        return nodePath.relative(files.workingCopyPath(), nodePath.join(process.cwd(), path));
+    },
+
+    write: function(path, content){
+// writes content to file at path overwriting anything that is already there
+        const prefix = require("os").platform() == "win32" ? "." : "/";
+        files.writeFilesFromTree(util.setIn({}, path.split(nodePath.sep).concat(content)), prefix);
+    },
+
+    writeFilesFromTree: function(tree, prefix){
+// takes tree of files as a nested JS obj and writes all those files to disk taking prefix as the root of the tree
+        Object.keys(tree).forEach(function(name){
+            const path = nodePath.join(prefix, name);
+            if(util.isString(tree[name])){
+                fs.writeFileSync(path, tree[name]);
+            }else{
+                if(!fs.existsSync(path)){
+                    fs.mkdirSync(path, "777");
+                }
+                files.writeFilesFromTree(tree[name], path);
+            }
+        });
+    },
+}
+
 
 
 

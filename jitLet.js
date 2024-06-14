@@ -1129,7 +1129,7 @@ const files = {
     nestFlatTree: function(obj){
 // takes obj, a mapping of file path strings to content and returns a nested JS obj where each key represents a sub directory
         return Object.keys(obj).reduce(function(tree, wholePath){
-            return util.setIn(tree, wholepath.split(nodePath.join(path, dirChild)));
+            return util.setIn(tree, wholePath.split(nodePath.join(path, dirChild)));
         }, []);
     },
     

@@ -1182,8 +1182,57 @@ const status = {
     }
 };
 
+const parseOptions = function(argv){
+// takes the process.argv object passed when jitlet.js is run as a script, returns an object that contains the parsed parameters to be formed in a jitlet command
+    let name;
+    return argv.reduce(function(opts, arg){
+        if(arg.match(/^-/)){
+            name = arg.replace(/^-+/, "");
+            opts[name] = true
+        }else if(name !== undefined){
+            opts[name] = arg;
+            name = undefined;
+        }else{
+            opts._.push(arg);
+        }
+        return opts;
+    }, { _: [] });
+};
 
+const runCli = module.exports.runCli = function(argv){
+// takes the process.argv object passed when jitlet.js is run as a script, parses the command line arguments, runs the corresponding jitlet command and returns the string returned by the command
+    const opts = parseOptions(argv);
+    const commandName = opts._[2];
+    
+    if(commandName === undefined){
+        throw new Error("you must specify a Jitlet command to run");
+    }else{
+        const commandFnName = commandName.replace(/-/g, "_");
+        const fn = jitlet[commandFnName];
+        
+        if(fn === undefined){
+            throw new Error("'" + commandFnName + "' is not a Jitlet command");
+        }else{
+            const commandArgs = opts._.slice(3);
+            while(commandArgs.length < fn.length - 1) {
+                commandArgs.push(undefined);
+            }
+            return fn.apply(jitlet, commandArgs.concat(opts))
+        }
+    }
+};
 
+if(require.main == module){
+// if jitlet.js is run as a scripts, pass the process.argv array of script arguments to runCli() so they can be used to run a jitlet command
+    try{
+        const result = runCli(process.argv);
+        if(result !== undefined){
+            console.log(result);
+        }
+    }catch(e){
+        console.error(e.toString());
+    }
+}
 
 
 

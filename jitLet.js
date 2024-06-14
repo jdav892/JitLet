@@ -1148,6 +1148,40 @@ const files = {
     }
 };
 
+const status = {
+// outputs the repository status as a human readable string
+    toString: function(){
+// returns the repository status as a human readable string
+        function untracked(){
+// returns an array of lines listing the files not being tracked by jitlet
+            return fs.readdirSync(files.workingCopyPath())
+                .filter(function(p) { return index.toc()[p] === undefined && p !== ".jitlet"; });
+        };
+        function toBeCommitted(){
+// returns an array of lines listing the files that have changes that will be included in the next commit
+            const headHash = refs.hash("HEAD");
+            const headToc = headHash === undefined ? {} : objects.commitToc(headHash);
+            const ns = diff.nameStatus(diff.tocDiff(headToc, index.toc()));
+            return Object.keys(ns).map(function(p) { return ns[p] + " " + p;});
+        };
+        function notStagedForCommit(){
+// returns an array of lines listing the files that have changes that will not be included in the next commit
+            const ns = diff.namesStatus(diff.diff());
+            return Object.keys(ns).map(function(p) { return ns[p] + " " + p; });
+        };
+        function listing(heading, lines){
+// keeps lines (prefixed by heading) only if it's nonempty
+            return lines.length > 0 ? [heading, lines] : [];
+        }
+        return util.flatten(["On branch " + refs.headBranchName(),
+                            listing("Untracked files:", untracked()),
+                            listing("Unmerged paths:", index.conflictedPaths()),
+                            listing("Changes to be committed:", toBeCommitted()),
+                            listing("Changes not staged for commit:", notStagedForCommit())])
+            .join("\n");
+    }
+};
+
 
 
 

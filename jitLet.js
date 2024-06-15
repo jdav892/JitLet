@@ -1018,6 +1018,7 @@ const util = {
     },
 
     onRemote: function(remotePath){
+//  allows execution of a command on a remote repository, returns an anonymous function that returns another function
         return function(fn){
             const originalDir = process.cwd();
             process.chdir(remotePath);

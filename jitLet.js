@@ -5,25 +5,26 @@ const nodePath = require("path");
 //initialize new repo
 const jitlet = module.exports = {
     init: function(opts) {
-        if(FileSystem.inRep()) {return;}
+        if(files.inRepo()) {return;}
         opts = opts || {};
 
-        const jitletStructure = {
+            const jitletStructure = {
             HEAD: "ref: refs/heads/master\n",
 
             config: config.objToStr({core:{ "": { bare: opts.bare === true}}}),
             
             objects: {},
             refs: {
-                heads: {}
+                heads: {},
             }
         };
-        FileSystem.writeFilesFromTree(opts.bare ? jitletStructure : { ".jitlet" : jitletStructure},
+        //Not sure why Eslint is mad at this all of a sudden but tbd
+         files.writeFilesFromTree(opts.bare ? jitletStructure : { ".jitlet" : jitletStructure},
                     process.cwd());
     },
 // add files that match path
     add: function(path, _) {
-        FileSystem.assertInRepo();
+        files.assertInRepo();
         config.assertNotBare();
         
         const addedFiles = files.lsRecursive(path);
@@ -1056,13 +1057,16 @@ const files = {
 
     writeFilesFromTree: function(tree, prefix){
 // takes tree of files as a nested JS obj and writes all those files to disk taking prefix as the root of the tree
+        if(!tree || typeof tree !== "object"){
+            throw new Error("Invalid")
+        }
         Object.keys(tree).forEach(function(name){
             const path = nodePath.join(prefix, name);
             if(util.isString(tree[name])){
                 fs.writeFileSync(path, tree[name]);
             }else{
                 if(!fs.existsSync(path)){
-                    fs.mkdirSync(path, "777");
+                    fs.mkdirSync(path, { recursive: true});
                 }
                 files.writeFilesFromTree(tree[name], path);
             }
